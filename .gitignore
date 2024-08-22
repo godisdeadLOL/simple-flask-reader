@@ -1,0 +1,5 @@
+test.txt
+chapters/*
+chapters.json
+config.py
+__pycache__
