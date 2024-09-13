@@ -39,5 +39,8 @@ def list_chapters(book_id: str):
     for item in listed:
         item["translated"] = ""
         item["original"] = ""
+        
+    # sort
+    listed.sort( key=lambda ch: ch['number'] )
 
     return TypeAdapter(type=List[Chapter]).validate_python(listed)
