@@ -3,3 +3,5 @@ chapters/*
 chapters.json
 config.py
 __pycache__
+main_.py
+db.json

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css" />
+	<script src=" https://cdn.jsdelivr.net/npm/markdown@0.5.0/lib/markdown.min.js "></script>
+
+	<title>{{current.title}}</title>
+
+	<script>
+		window.onload = (e) => {
+			const translated = {{ current.translated | tojson}}
+			const original = {{ current.original | tojson }}
+
+			document.getElementById("translated_text").innerHTML = markdown.toHTML(translated)
+			if (original.length > 0) document.getElementById("original_text").innerHTML = markdown.toHTML(original)
+			else document.getElementById("toggle_button").style.display = "none"
+		}
+
+		function toggleOriginal () {
+			const originalElement = document.getElementById("original_text")
+			const buttonElement = document.getElementById("toggle_button")
+
+			const hidden = originalElement.style.display != "block"
+			if(hidden) {
+				originalElement.style.display = "block"
+				buttonElement.innerText = "Hide original"
+			}
+			else {
+				buttonElement.innerText = "Show original"
+				originalElement.style.display = "none"
+			}
+		}
+	</script>
+
+	<style>
+		#translated_text {
+			flex-grow: 1;
+		}
+
+		#original_text {
+			flex-grow: 1;
+			display: none;
+		}
+
+		@media (max-width: 768px) {
+			#original_text {
+				position: absolute;
+				left: 0px;
+				right: 0px;
+				background-color: var(--pico-background-color);
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<header class="container">
+		<nav>
+			<ul>
+				<li><strong>{{ current.book_id }}</strong></li>
+			</ul>
+
+			<ul>
+				<li>
+					<select name="select" aria-label="Select" required value="645"
+						onchange="window.open( this.value, '_self' )">
+						{% for chapter in chapters %}
+						<option {% if chapter.number==current.number %} selected {% endif %} value="{{chapter.number}}">
+							{{chapter.number}} - {{chapter.title}}</option>
+						{% endfor %}
+					</select>
+				</li>
+
+				<li>
+					<button id="toggle_button" onclick="toggleOriginal()">Show original</button>
+				</li>
+			</ul>
+		</nav>
+	</header>
+
+	<main class="container">
+		<h3>{{current.number}} - {{current.title}}</h3>
+
+		<div style="display: flex; position: relative; gap: 8px;">
+			<div id="translated_text"></div>
+			<div id="original_text"></div>
+		</div>
+	</main>
+
+	<footer class="container">
+
+		<nav>
+			<ul> {% if previous %} <li> <a href="../{{previous.number}}">Предыдущая глава</a> </li> {% endif %} </ul>
+
+			<ul> {% if next %} <li> <a href="../{{next.number}}">Следующая глава</a> </li> {% endif %} </ul>
+		</nav>
+
+	</footer>
+</body>
+
+</html>

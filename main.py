@@ -1,84 +1,49 @@
 import os, json
 from flask import Flask, render_template, request
+from flask_pydantic import validate
+from flask_httpauth import HTTPTokenAuth
 
 from config import TOKEN
+from model import Chapter
+
+import service
 
 app = Flask(__name__)
+auth = HTTPTokenAuth(scheme="Bearer")
 
-@app.route("/<int:chapter_id>")
-def index(chapter_id):
-    # chapter list
-    chapters = []
 
-    with open("./chapters.json", "r", encoding="utf-8") as f:
-        # chapters = dict([(int(item[0]), item[1]) for item in json.load(f).items()])
-        chapters = [
-            {"id": int(item[0]), "title": item[1]} for item in json.load(f).items()
-        ]
+@auth.verify_token
+def verify_token(token):
+    return token == TOKEN
 
-    # current
-    current_index = next(
-        i for i, chapter in enumerate(chapters) if chapter["id"] == chapter_id
+
+@app.route("/<string:book_id>/<int:number>", methods=["GET"])
+def chapter(book_id: str, number: int):
+    chapters = service.list_chapters(book_id)
+    cur_chapter = service.get_chapter(book_id, number)
+
+    if cur_chapter == None:
+        return "not found", 404
+
+    cur_index = next(
+        i for i, chapter in enumerate(chapters) if chapter.number == number
     )
-    current = chapters[current_index]
 
-    with open(f"./chapters/{chapter_id}.txt", "r", encoding="utf-8") as f:
-        current["content"] = f.read()
-
-    # previous next
-    previous = None
-    next_ = None
-
-    if current_index > 0:
-        previous = chapters[current_index - 1]
-
-    if current_index < len(chapters) - 1:
-        next_ = chapters[current_index + 1]
+    prev_chapter = chapters[cur_index - 1] if cur_index > 0 else None
+    next_chapter = chapters[cur_index + 1] if cur_index < len(chapters) - 1 else None
 
     return render_template(
-        "index.html",
-        current=current,
-        previous=previous,
-        next=next_,
+        "chapter.j2",
+        current=cur_chapter,
+        previous=prev_chapter,
+        next=next_chapter,
         chapters=chapters,
     )
 
 
-@app.route("/api/add_chapter", methods=["POST"])
-def add_chapter():
-    # auth
-    if not "Authorization" in request.headers:
-        return "Unauthorized", 401
-
-    token = request.headers["Authorization"].split(" ")[1]
-    if token != TOKEN:
-        return "Unauthorized", 401
-
-    # validate from
-    data = request.get_json(force=True)
-
-    if not "id" in data or not "title" in data or not "content" in data:
-        return "Wrong entity", 400
-
-    chapter_id = data["id"]
-    chapter_title = data["title"]
-    chapter_content = data["content"]
-
-    # save file
-    with open(f"./chapters/{chapter_id}.txt", "w", encoding="utf-8") as f:
-        f.write(chapter_content)
-
-    # add title
-    titles = {}
-
-    if os.path.exists("./chapters.json"):
-        with open("./chapters.json", "r", encoding="utf-8") as f:
-            titles = json.load(f)
-
-    titles[str(chapter_id)] = chapter_title
-    titles = dict(sorted(titles.items(), key=lambda item: int(item[0])))
-
-    with open("./chapters.json", "w", encoding="utf-8") as f:
-        json.dump(titles, f)
-
-    return "Chapter uploaded", 200
+@app.route("/api/upload", methods=["POST"])
+@validate()
+@auth.login_required
+def upload(body: Chapter):
+    service.add_chapter(body)
+    return "ok", 200
